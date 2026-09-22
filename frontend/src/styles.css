@@ -1,0 +1,255 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f6f8;
+  color: #1f2937;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+/* HEADER */
+
+.header {
+  background: #172554;
+  color: white;
+  padding: 35px 50px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.header p {
+  margin-top: 8px;
+  font-size: 17px;
+  opacity: 0.9;
+}
+
+
+/* DASHBOARD */
+
+.dashboard {
+  max-width: 1100px;
+  margin: 35px auto;
+  padding: 0 20px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+}
+
+
+/* CARDS */
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.card p {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+
+/* UPLOAD */
+
+.upload-area {
+  margin-top: 20px;
+}
+
+input[type="file"] {
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.selected-file {
+  color: #334155 !important;
+}
+
+
+/* BUTTON */
+
+.primary-button {
+  background: #2563eb;
+  color: white;
+
+  border: none;
+  border-radius: 7px;
+
+  padding: 12px 20px;
+
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  background: #1d4ed8;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* MESSAGES */
+
+.upload-message {
+  margin-top: 15px;
+  font-weight: 600;
+}
+
+
+/* BUDGET */
+
+.budget-input {
+  width: 100%;
+
+  padding: 12px;
+
+  margin-top: 8px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+
+  font-size: 16px;
+}
+
+.budget-display {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+.budget-display strong {
+  margin-left: 8px;
+}
+
+
+/* MODEL */
+
+.model-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 15px;
+
+  margin-top: 20px;
+}
+
+.model-item {
+  background: #f8fafc;
+
+  padding: 18px;
+
+  border-radius: 8px;
+}
+
+.model-item span {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.model-item strong {
+  display: block;
+
+  margin-top: 7px;
+}
+
+
+/* DATASET */
+
+.dataset-info {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 15px;
+
+  margin-top: 20px;
+}
+
+.dataset-info div {
+  background: #f8fafc;
+
+  padding: 18px;
+
+  border-radius: 8px;
+}
+
+.dataset-info span {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.dataset-info strong {
+  display: block;
+
+  margin-top: 7px;
+}
+
+
+/* DAG */
+
+.dag-container {
+  margin-top: 20px;
+
+  text-align: center;
+
+  padding: 25px;
+
+  background: #f8fafc;
+
+  border-radius: 8px;
+}
+
+.dag-container img {
+  max-width: 100%;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 750px) {
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+
+  .model-grid,
+  .dataset-info {
+    grid-template-columns: 1fr 1fr;
+  }
+}
