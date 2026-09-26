@@ -23,6 +23,10 @@ backend/data/*.csv.gz
 # Uploaded datasets
 backend/data/uploads/
 
+# EconoCausal Week 2 generated artifacts
+backend/data/week2/*.csv
+backend/data/week2/*.joblib
+
 # Python generated files
 *.log
 
