@@ -896,3 +896,208 @@ def causal_audit(
         "refutation":
             refutation_text
     }
+
+# ============================================================
+# WEEK 2 - ITE / UPLIFT API
+# ============================================================
+
+WEEK2_ITE_FILE = Path("data/week2/criteo_ite_results.csv")
+
+
+@app.get("/week2/ite-summary")
+def week2_ite_summary():
+    """
+    Return summary statistics for the Week 2 Criteo ITE results.
+    """
+
+    if not WEEK2_ITE_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Week 2 ITE results not found. Run dml_model.py first."
+        )
+
+    df = pd.read_csv(
+        WEEK2_ITE_FILE,
+        usecols=["treatment", "conversion", "ite"]
+    )
+
+    df = df.dropna()
+
+    return {
+        "rows": int(len(df)),
+        "mean_ite": float(df["ite"].mean()),
+        "median_ite": float(df["ite"].median()),
+        "min_ite": float(df["ite"].min()),
+        "max_ite": float(df["ite"].max()),
+        "negative_uplift": int((df["ite"] < 0).sum()),
+        "positive_uplift": int((df["ite"] > 0).sum()),
+        "zero_uplift": int((df["ite"] == 0).sum()),
+        "treatment_rate": float(df["treatment"].mean()),
+        "conversion_rate": float(df["conversion"].mean())
+    }
+
+
+@app.get("/week2/ite-data")
+def week2_ite_data(
+    limit: int = 10000,
+    min_ite: float | None = None,
+    max_ite: float | None = None
+):
+    """
+    Return filtered ITE results for the React dashboard.
+    """
+
+    if not WEEK2_ITE_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Week 2 ITE results not found."
+        )
+
+    limit = max(100, min(limit, 50000))
+
+    df = pd.read_csv(
+        WEEK2_ITE_FILE,
+        usecols=["treatment", "conversion", "ite"]
+    )
+
+    df = df.dropna()
+
+    if min_ite is not None:
+        df = df[df["ite"] >= min_ite]
+
+    if max_ite is not None:
+        df = df[df["ite"] <= max_ite]
+
+    df = df.sort_values(
+        "ite",
+        ascending=False
+    ).head(limit)
+
+    return {
+        "rows": int(len(df)),
+        "data": df.to_dict(orient="records")
+    }
+
+
+# ============================================================
+# WEEK 2 - UPLIFT / QINI CURVE API
+# ============================================================
+
+@app.get("/week2/uplift-curve")
+def week2_uplift_curve():
+    """
+    Return cumulative uplift and Qini curve data
+    for the React + Plotly dashboard.
+    """
+
+    if not WEEK2_ITE_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Week 2 ITE results not found."
+        )
+
+    df = pd.read_csv(
+        WEEK2_ITE_FILE,
+        usecols=["treatment", "conversion", "ite"]
+    )
+
+    df = df.dropna()
+
+    treatment_probability = df["treatment"].mean()
+    control_probability = 1.0 - treatment_probability
+
+    if treatment_probability <= 0 or control_probability <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Treatment and control groups are required."
+        )
+
+    # Rank customers by predicted ITE
+    df = df.sort_values(
+        "ite",
+        ascending=False
+    ).reset_index(drop=True)
+
+    # Inverse-propensity weighted outcomes
+    df["treated_contribution"] = np.where(
+        df["treatment"] == 1,
+        df["conversion"] / treatment_probability,
+        0.0
+    )
+
+    df["control_contribution"] = np.where(
+        df["treatment"] == 0,
+        df["conversion"] / control_probability,
+        0.0
+    )
+
+    # Cumulative incremental conversions
+    cumulative_treated = (
+        df["treated_contribution"].cumsum()
+    )
+
+    cumulative_control = (
+        df["control_contribution"].cumsum()
+    )
+
+    cumulative_uplift = (
+        cumulative_treated - cumulative_control
+    )
+
+    population_fraction = (
+        np.arange(1, len(df) + 1)
+        / len(df)
+    )
+
+    # Random targeting baseline
+    final_uplift = float(cumulative_uplift.iloc[-1])
+
+    random_baseline = (
+        population_fraction * final_uplift
+    )
+
+    # Downsample for browser performance
+    max_points = 1000
+
+    if len(df) > max_points:
+        indices = np.linspace(
+            0,
+            len(df) - 1,
+            max_points
+        ).astype(int)
+
+        population_fraction = (
+            population_fraction[indices]
+        )
+
+        cumulative_uplift = (
+            cumulative_uplift.iloc[indices]
+        )
+
+        random_baseline = (
+            random_baseline[indices]
+        )
+
+    return {
+        "points": [
+            {
+                "population_fraction":
+                    float(x),
+                "cumulative_uplift":
+                    float(y),
+                "random_baseline":
+                    float(r)
+            }
+            for x, y, r in zip(
+                population_fraction,
+                cumulative_uplift,
+                random_baseline
+            )
+        ],
+        "treatment_probability":
+            float(treatment_probability),
+        "control_probability":
+            float(control_probability),
+        "final_uplift":
+            final_uplift
+    }
