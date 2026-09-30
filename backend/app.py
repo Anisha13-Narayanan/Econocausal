@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -1101,3 +1102,40 @@ def week2_uplift_curve():
         "final_uplift":
             final_uplift
     }
+
+# ============================================================
+# MID-PROJECT REVIEW - CAUSAL AUDIT API
+# ============================================================
+
+MID_REVIEW_FILE = Path(
+    "data/mid_review/causal_refutation_results.json"
+)
+
+
+@app.get("/mid-review/causal-audit")
+def mid_review_causal_audit():
+
+    if not MID_REVIEW_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Causal audit results not found. "
+                "Run causal_refutation.py first."
+            )
+        )
+
+    try:
+        with open(
+            MID_REVIEW_FILE,
+            "r",
+            encoding="utf-8"
+        ) as file:
+            results = json.load(file)
+
+        return results
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read causal audit results: {exc}"
+        )
