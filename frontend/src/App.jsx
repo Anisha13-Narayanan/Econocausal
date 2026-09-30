@@ -1,4 +1,6 @@
 import Week2Dashboard from "./Week2Dashboard";
+import causalAudit from "./CausalAudit";
+
 
 import { useState } from "react";
 import axios from "axios";
@@ -248,6 +250,13 @@ function App() {
       <section className="card full-width">
 
         <Week2Dashboard />
+
+      </section>
+
+       {/* MID-PROJECT CAUSAL AUDIT */}
+      <section className="card full-width">
+
+        <CausalAudit />
 
       </section>
 
