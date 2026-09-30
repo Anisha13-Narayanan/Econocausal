@@ -1,0 +1,45 @@
+{
+  "dataset": "data\\criteo-uplift-v2.1.csv",
+  "sample_size": 100000,
+  "treatment": "treatment",
+  "outcome": "conversion",
+  "covariates": [
+    "f0",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9",
+    "f10",
+    "f11"
+  ],
+  "estimated_ate": 0.0011574743642193946,
+  "estimation_time_seconds": 0.42,
+  "refutation_tests": {
+    "random_common_cause": {
+      "estimated_effect": 0.0011574743642193946,
+      "new_effect": 0.0011575097344406278,
+      "p_value": 0.8600000000000001,
+      "result": "Refute: Add a random common cause\nEstimated effect:0.0011574743642193946\nNew effect:0.0011575097344406278\np value:0.8600000000000001\n",
+      "runtime_seconds": 44.38
+    },
+    "placebo_treatment": {
+      "estimated_effect": 0.0011574743642193946,
+      "new_effect": 9.668804332781305e-05,
+      "p_value": 0.8999999999999999,
+      "result": "Refute: Use a Placebo Treatment\nEstimated effect:0.0011574743642193946\nNew effect:9.668804332781305e-05\np value:0.8999999999999999\n",
+      "runtime_seconds": 42.75
+    },
+    "data_subset": {
+      "estimated_effect": 0.0011574743642193946,
+      "new_effect": 0.0009617277985913836,
+      "p_value": 0.0,
+      "result": "Refute: Use a subset of data\nEstimated effect:0.0011574743642193946\nNew effect:0.0009617277985913836\np value:0.0\n",
+      "runtime_seconds": 26.56
+    }
+  }
+}
