@@ -1,3 +1,5 @@
+import Week2Dashboard from "./Week2Dashboard";
+
 import { useState } from "react";
 import axios from "axios";
 import "./styles.css";
@@ -240,6 +242,14 @@ function App() {
         </section>
 
       </main>
+
+
+      {/* WEEK 2 DASHBOARD */}
+      <section className="card full-width">
+
+        <Week2Dashboard />
+
+      </section>
 
     </div>
   );
