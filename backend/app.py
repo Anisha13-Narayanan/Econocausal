@@ -30,6 +30,11 @@ try:
 except Exception:
     DOWHY_AVAILABLE = False
 
+try:
+    from backend.optimization import optimize_discount_allocation
+except ModuleNotFoundError:
+    from optimization import optimize_discount_allocation
+
 
 # ============================================================
 # FASTAPI APPLICATION
@@ -559,56 +564,139 @@ def train(
 # ============================================================
 
 @app.post("/optimize")
-def optimize(
-    req: OptimizeRequest
-):
+def optimize(req: OptimizeRequest):
+    """Allocate discounts using SciPy mixed-integer optimization."""
 
     df = DATA.copy()
 
+    if df.empty:
+        raise HTTPException(
+            status_code=400,
+            detail="No customer data is available for optimization.",
+        )
 
+    if not np.isfinite(req.budget) or req.budget < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Budget must be a finite, non-negative value.",
+        )
+
+    discounts = np.asarray(req.discount_options, dtype=float)
+
+    if discounts.size == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one discount option.",
+        )
+
+    if (
+        not np.all(np.isfinite(discounts))
+        or np.any(discounts < 0)
+        or np.any(discounts > req.max_discount)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Discounts must be finite and between 0 and max_discount.",
+        )
+
+    if len(np.unique(discounts)) != len(discounts):
+        raise HTTPException(
+            status_code=400,
+            detail="Discount options must not contain duplicates.",
+        )
+
+    required_columns = {"customer_id", "avg_order_value"}
+
+    missing_columns = required_columns.difference(df.columns)
+
+    if missing_columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required customer columns: {sorted(missing_columns)}",
+        )
+
+    if not np.all(np.isfinite(df["avg_order_value"].to_numpy(dtype=float))):
+        raise HTTPException(
+            status_code=400,
+            detail="Customer order values must be finite numbers.",
+        )
+
+    if np.any(df["avg_order_value"].to_numpy(dtype=float) < 0):
+        raise HTTPException(
+            status_code=400,
+            detail="Customer order values cannot be negative.",
+        )
+
+    # Estimate treatment effect using the existing causal model.
     ite20, method = estimate_ite(df)
 
-
-    # Approximate $10 effect as half
-    # of the $20 treatment effect.
-
-    discounts = np.array(
-        req.discount_options,
-        dtype=float
-    )
-
-    n = len(df)
-
-
-    # Expected incremental revenue.
-
-    revenue = (
-        df["avg_order_value"]
-        .to_numpy()
-    )
-
     effect20 = np.maximum(
-        ite20,
-        0
+        np.asarray(ite20, dtype=float).reshape(-1),
+        0.0,
     )
 
+    if len(effect20) != len(df) or not np.all(np.isfinite(effect20)):
+        raise HTTPException(
+            status_code=500,
+            detail="The causal model returned invalid treatment effects.",
+        )
 
-    effects = np.outer(
-        effect20,
-        discounts / 20.0
+    revenue = df["avg_order_value"].to_numpy(dtype=float)
+
+    # MODELING ASSUMPTION:
+    # The $10 effect is approximated as half of the estimated $20 effect.
+    # This is not a separately estimated causal effect for each discount.
+    effects = np.outer(effect20, discounts / 20.0)
+    incremental_revenue = effects * revenue[:, None]
+
+    try:
+        selected = optimize_discount_allocation(
+            incremental_revenue=incremental_revenue,
+            discounts=discounts,
+            budget=req.budget,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Discount optimization failed: {exc}",
+        ) from exc
+
+    allocation = []
+
+    for item in selected:
+        i = item["customer_index"]
+
+        allocation.append({
+            "customer_id": int(df.iloc[i]["customer_id"]),
+            "discount": float(item["discount"]),
+            "expected_incremental_revenue": float(
+                item["expected_incremental_revenue"]
+            ),
+            "expected_net_gain": float(item["expected_net_gain"]),
+            "ite_20": float(effect20[i]),
+        })
+
+    spent = float(sum(item["discount"] for item in allocation))
+    incremental_total = float(
+        sum(item["expected_incremental_revenue"] for item in allocation)
+    )
+    net_gain_total = float(
+        sum(item["expected_net_gain"] for item in allocation)
     )
 
+    summary = {
+        "budget": float(req.budget),
+        "spent": spent,
+        "expected_incremental_revenue": incremental_total,
+        "expected_net_gain": net_gain_total,
+        "customers_targeted": len(allocation),
+    }
 
-    incremental_revenue = (
-        effects
-        *
-        revenue[:, None]
-    )
-
-
-    incremental_cost = (
-        discounts[None, :]
-    )
+    return {
+        "method": f"{method} + SciPy MILP budget optimization",
+        "summary": summary,
+        "allocation": allocation[:500],
+    }
 
 
     # --------------------------------------------------------
